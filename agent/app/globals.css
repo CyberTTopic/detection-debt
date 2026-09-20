@@ -1,0 +1,724 @@
+/*
+ * Detection Debt — visual system.
+ *
+ * The obvious palette for a security tool is near-black with one acid accent.
+ * It is also the palette every security tool already has, so it carries no
+ * information. This goes the other way, on the strength of the project's own
+ * name: debt is accounting vocabulary, so the surface is a ledger. Pale ruled
+ * paper, cool ink, oxblood for what is lost and deep green for what survives.
+ * A reader is auditing a balance, not watching a NOC wall.
+ *
+ * Monospace is used only for things that really are identifiers — T1003,
+ * DeviceProcessEvents, DET-0042, GROQ — never as a texture for small labels.
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Serif:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+:root {
+  --paper: #e9ece6;
+  --paper-raised: #f2f4ef;
+  --rule: #c5cfc4;
+  --rule-strong: #a8b4a8;
+  --ink: #191d1a;
+  --pencil: #5f6b62;
+  --debit: #99281f;
+  --credit: #1e5a49;
+  --flag: #8a6412;
+
+  --serif: 'IBM Plex Serif', Georgia, 'Times New Roman', serif;
+  --mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+
+  /* A 1.25 scale off a 17px base. */
+  --t-xs: 0.72rem;
+  --t-sm: 0.83rem;
+  --t-base: 1rem;
+  --t-md: 1.25rem;
+  --t-lg: 1.6rem;
+  --t-xl: 2.1rem;
+  --t-2xl: 2.9rem;
+}
+
+/* A dark ledger rather than a different design: same hierarchy, inverted stock. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --paper: #14181a;
+    --paper-raised: #1c2124;
+    --rule: #2e373a;
+    --rule-strong: #44504f;
+    --ink: #e4e8e2;
+    --pencil: #93a09a;
+    --debit: #e4796c;
+    --credit: #67b79c;
+    --flag: #d8ab4e;
+  }
+}
+
+:root[data-theme='dark'] {
+  --paper: #14181a;
+  --paper-raised: #1c2124;
+  --rule: #2e373a;
+  --rule-strong: #44504f;
+  --ink: #e4e8e2;
+  --pencil: #93a09a;
+  --debit: #e4796c;
+  --credit: #67b79c;
+  --flag: #d8ab4e;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 17px;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--serif);
+  font-size: var(--t-base);
+  line-height: 1.6;
+  font-feature-settings: 'kern' 1;
+}
+
+/* ---- The page ---------------------------------------------------- */
+
+.shell {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 0 16px 6rem;
+}
+
+/* ---- Masthead ---------------------------------------------------- */
+
+.masthead {
+  padding: 3.5rem 0 1.75rem;
+  border-bottom: 2px solid var(--ink);
+}
+
+.masthead h1 {
+  font-size: var(--t-2xl);
+  font-weight: 600;
+  letter-spacing: -0.022em;
+  line-height: 1.04;
+  margin: 0 0 0.5rem;
+}
+
+.standfirst {
+  font-size: var(--t-md);
+  color: var(--pencil);
+  max-width: 34em;
+  margin: 0;
+  text-wrap: pretty;
+}
+
+/*
+ * The dependency chain, set as type. This is the subject's own vernacular and
+ * the reason the project needs a graph rather than a search index, so it is
+ * stated on the page in the form it has in the data.
+ */
+.chain {
+  font-family: var(--mono);
+  font-size: var(--t-sm);
+  color: var(--pencil);
+  margin: 1.5rem 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.55rem;
+  align-items: baseline;
+}
+
+.chain b {
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.chain span {
+  color: var(--rule-strong);
+}
+
+/* ---- Two columns: the ledger, and the audit rail ----------------- */
+
+.columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 20rem;
+  gap: 2.5rem;
+  align-items: start;
+  margin-top: 2.5rem;
+}
+
+@media (max-width: 960px) {
+  .columns {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2rem;
+  }
+}
+
+/* ---- Conversation ----------------------------------------------- */
+
+.turn {
+  padding: 1.5rem 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.turn:last-child {
+  border-bottom: none;
+}
+
+.asked {
+  font-size: var(--t-md);
+  font-weight: 500;
+  margin: 0;
+  text-wrap: pretty;
+}
+
+.asked::before {
+  content: '';
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  margin-right: 0.6rem;
+  vertical-align: 0.12em;
+  background: var(--ink);
+}
+
+.answer {
+  max-width: 68ch;
+}
+
+.answer > :first-child {
+  margin-top: 0;
+}
+
+.answer > :last-child {
+  margin-bottom: 0;
+}
+
+.answer p,
+.answer li {
+  text-wrap: pretty;
+}
+
+.answer h1,
+.answer h2,
+.answer h3 {
+  font-size: var(--t-md);
+  font-weight: 600;
+  margin: 1.6rem 0 0.5rem;
+  letter-spacing: -0.01em;
+}
+
+.answer code {
+  font-family: var(--mono);
+  font-size: 0.88em;
+  background: var(--paper-raised);
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  padding: 0.08em 0.3em;
+}
+
+.answer table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1.2rem 0;
+  font-size: var(--t-sm);
+}
+
+.answer th {
+  text-align: left;
+  font-weight: 600;
+  border-bottom: 1.5px solid var(--ink);
+  padding: 0.4rem 0.7rem 0.4rem 0;
+}
+
+.answer td {
+  border-bottom: 1px solid var(--rule);
+  padding: 0.4rem 0.7rem 0.4rem 0;
+  vertical-align: top;
+}
+
+.answer td:has(code),
+.answer th:first-child {
+  white-space: nowrap;
+}
+
+.answer blockquote {
+  margin: 1.2rem 0;
+  padding-left: 1rem;
+  border-left: 3px solid var(--rule-strong);
+  color: var(--pencil);
+  font-style: italic;
+}
+
+/* ---- Composer ---------------------------------------------------- */
+
+.composer {
+  margin-top: 1.75rem;
+  border: 1.5px solid var(--ink);
+  background: var(--paper-raised);
+}
+
+.composer textarea {
+  display: block;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font-family: var(--serif);
+  font-size: var(--t-base);
+  line-height: 1.5;
+  padding: 0.9rem 1rem;
+  resize: none;
+  min-height: 3.4rem;
+  field-sizing: content;
+  max-height: 11rem;
+}
+
+.composer textarea:focus {
+  outline: none;
+}
+
+.composer:focus-within {
+  box-shadow: 0 0 0 3px var(--rule-strong);
+}
+
+.composer-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border-top: 1px solid var(--rule);
+  padding: 0.5rem 0.6rem 0.5rem 1rem;
+}
+
+.hint {
+  font-size: var(--t-xs);
+  color: var(--pencil);
+}
+
+button.send,
+button.stop {
+  font-family: var(--serif);
+  font-size: var(--t-sm);
+  font-weight: 500;
+  padding: 0.4rem 1rem;
+  border: 1.5px solid var(--ink);
+  background: var(--ink);
+  color: var(--paper);
+  cursor: pointer;
+  border-radius: 0;
+}
+
+button.send:disabled {
+  background: transparent;
+  color: var(--rule-strong);
+  border-color: var(--rule);
+  cursor: not-allowed;
+}
+
+button.stop {
+  background: transparent;
+  color: var(--ink);
+}
+
+button.send:not(:disabled):hover,
+button.stop:hover {
+  background: var(--debit);
+  border-color: var(--debit);
+  color: var(--paper);
+}
+
+/* ---- Openers ----------------------------------------------------- */
+
+.openers {
+  margin: 1.5rem 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 1px;
+  background: var(--rule);
+  border: 1px solid var(--rule);
+}
+
+.openers button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  font-family: var(--serif);
+  font-size: var(--t-sm);
+  line-height: 1.45;
+  color: var(--ink);
+  background: var(--paper-raised);
+  border: 0;
+  padding: 0.75rem 0.9rem;
+  cursor: pointer;
+}
+
+.openers button:hover,
+.openers button:focus-visible {
+  background: var(--paper);
+  outline: none;
+  box-shadow: inset 3px 0 0 var(--debit);
+}
+
+.openers .why {
+  display: block;
+  color: var(--pencil);
+  font-size: var(--t-xs);
+  margin-top: 0.15rem;
+}
+
+/* ---- The audit rail ---------------------------------------------- */
+
+.rail {
+  position: sticky;
+  top: 1.5rem;
+  border-top: 2px solid var(--ink);
+  padding-top: 0.75rem;
+  font-size: var(--t-sm);
+}
+
+.rail h2 {
+  font-size: var(--t-base);
+  font-weight: 600;
+  margin: 0 0 0.15rem;
+}
+
+.rail .rail-note {
+  color: var(--pencil);
+  font-size: var(--t-xs);
+  margin: 0 0 1rem;
+  text-wrap: pretty;
+}
+
+.rail ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.call {
+  border-bottom: 1px solid var(--rule);
+  padding: 0.6rem 0;
+  display: grid;
+  grid-template-columns: 3.2rem minmax(0, 1fr);
+  gap: 0.6rem;
+}
+
+/*
+ * Which endpoint answered is the single most useful fact in the trace, so it
+ * gets the left column rather than a badge floating in prose.
+ */
+.endpoint {
+  font-family: var(--mono);
+  font-size: var(--t-xs);
+  font-weight: 500;
+  line-height: 1.5;
+  padding-top: 0.1rem;
+}
+
+.endpoint.graph {
+  color: var(--credit);
+}
+
+.endpoint.docs {
+  color: var(--flag);
+}
+
+.endpoint.local {
+  color: var(--pencil);
+}
+
+.call-name {
+  font-family: var(--mono);
+  font-size: var(--t-xs);
+  font-weight: 500;
+  word-break: break-word;
+}
+
+/*
+ * Both of these sit under the tool name, so they are block-level. They are
+ * <span> elements, which default to inline — without this the argument runs
+ * straight on from the tool name and reads as one word.
+ */
+.call-args {
+  display: block;
+  font-family: var(--mono);
+  font-size: var(--t-xs);
+  color: var(--pencil);
+  margin-top: 0.15rem;
+  line-height: 1.45;
+  word-break: break-word;
+}
+
+.call-state {
+  display: block;
+  font-size: var(--t-xs);
+  color: var(--pencil);
+  margin-top: 0.15rem;
+  font-style: italic;
+}
+
+.call-state.failed {
+  color: var(--debit);
+}
+
+.rail-empty {
+  color: var(--pencil);
+  font-size: var(--t-sm);
+  text-wrap: pretty;
+}
+
+/* Provenance: which model answered, or why none can. */
+.rail-config {
+  font-size: var(--t-xs);
+  color: var(--pencil);
+  margin: 0 0 1rem;
+  padding-bottom: 0.7rem;
+  border-bottom: 1px solid var(--rule);
+  text-wrap: pretty;
+}
+
+.rail-config b {
+  font-family: var(--mono);
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.rail-config.bad {
+  color: var(--debit);
+  border-bottom-color: var(--debit);
+}
+
+/* ---- Impact report ---------------------------------------------- */
+
+.report {
+  border: 1.5px solid var(--ink);
+  margin: 1.25rem 0;
+  background: var(--paper-raised);
+}
+
+.report-head {
+  padding: 0.7rem 1rem;
+  border-bottom: 1px solid var(--rule);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 0.8rem;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.report-head strong {
+  font-weight: 600;
+}
+
+.report-verified {
+  font-size: var(--t-xs);
+  color: var(--credit);
+}
+
+.report-verified.disagree {
+  color: var(--debit);
+  font-weight: 600;
+}
+
+.tally {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
+  border-bottom: 1px solid var(--rule);
+}
+
+.tally div {
+  padding: 0.7rem 1rem;
+  border-right: 1px solid var(--rule);
+}
+
+.tally div:last-child {
+  border-right: 0;
+}
+
+.tally dt {
+  font-size: var(--t-xs);
+  color: var(--pencil);
+  margin: 0 0 0.1rem;
+}
+
+.tally dd {
+  margin: 0;
+  font-size: var(--t-lg);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+.tally dd.loss {
+  color: var(--debit);
+}
+
+.report-section {
+  padding: 0.8rem 1rem;
+  border-bottom: 1px solid var(--rule);
+}
+
+.report-section:last-child {
+  border-bottom: 0;
+}
+
+.report-section h4 {
+  font-size: var(--t-sm);
+  font-weight: 600;
+  margin: 0 0 0.45rem;
+}
+
+.techlist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: var(--t-sm);
+}
+
+.techlist li {
+  padding: 0.22rem 0;
+  display: flex;
+  gap: 0.5rem;
+  align-items: baseline;
+  flex-wrap: wrap;
+}
+
+.techlist code {
+  font-family: var(--mono);
+  font-size: var(--t-xs);
+  font-weight: 500;
+}
+
+/*
+ * Going dark is the one place this design animates. The technique ids fade and
+ * desaturate once, on arrival, because that is literally what the data says
+ * happened to them. Nothing else on the page moves on its own.
+ */
+.dark-tech code {
+  color: var(--debit);
+}
+
+.dark-tech .attrib {
+  color: var(--pencil);
+  font-size: var(--t-xs);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .dark-tech {
+    animation: fade-out-coverage 900ms ease-out both;
+  }
+}
+
+@keyframes fade-out-coverage {
+  from {
+    opacity: 1;
+    filter: none;
+  }
+  60% {
+    opacity: 0.35;
+    filter: saturate(0.2);
+  }
+  to {
+    opacity: 1;
+    filter: none;
+  }
+}
+
+.survives code {
+  color: var(--credit);
+}
+
+/* ---- Notices ---------------------------------------------------- */
+
+.notice {
+  border-left: 3px solid var(--debit);
+  background: var(--paper-raised);
+  padding: 0.8rem 1rem;
+  margin: 1.25rem 0;
+  font-size: var(--t-sm);
+}
+
+.notice h3 {
+  margin: 0 0 0.3rem;
+  font-size: var(--t-sm);
+  font-weight: 600;
+}
+
+.notice p {
+  margin: 0 0 0.4rem;
+}
+
+.notice p:last-child {
+  margin-bottom: 0;
+}
+
+.notice pre {
+  font-family: var(--mono);
+  font-size: var(--t-xs);
+  white-space: pre-wrap;
+  margin: 0.4rem 0 0;
+  color: var(--pencil);
+}
+
+/* ---- Colophon --------------------------------------------------- */
+
+.colophon {
+  margin-top: 3.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--rule);
+  font-size: var(--t-sm);
+  color: var(--pencil);
+  max-width: 68ch;
+}
+
+.colophon a {
+  color: var(--ink);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+
+.colophon p {
+  margin: 0 0 0.6rem;
+  text-wrap: pretty;
+}
+
+/* ---- Working indicator ------------------------------------------ */
+
+.working {
+  font-size: var(--t-sm);
+  color: var(--pencil);
+  padding: 0.6rem 0;
+}
+
+.working::after {
+  content: '';
+  display: inline-block;
+  width: 0.45rem;
+  height: 0.9em;
+  margin-left: 0.2rem;
+  background: var(--ink);
+  vertical-align: -0.1em;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .working::after {
+    animation: caret 1s steps(2, jump-none) infinite;
+  }
+}
+
+@keyframes caret {
+  to {
+    opacity: 0.15;
+  }
+}
+
+/* ---- Focus floor ------------------------------------------------ */
+
+:focus-visible {
+  outline: 2px solid var(--debit);
+  outline-offset: 2px;
+}

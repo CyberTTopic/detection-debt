@@ -1,0 +1,40 @@
+{
+  "name": "detection-debt-agent",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "smoke": "node --experimental-strip-types scripts/smoke-tools.ts",
+    "diagnose": "node --experimental-strip-types scripts/diagnose-snapshot.ts",
+    "test:delta": "node --experimental-strip-types lib/coverage-delta.test.ts",
+    "test:mcp": "node --experimental-strip-types lib/mcp.test.ts",
+    "test:normalize": "node --experimental-strip-types lib/normalize.test.ts",
+    "test": "npm run test:delta && npm run test:normalize && npm run test:model && npm run test:mcp",
+    "typecheck": "tsc --noEmit",
+    "test:model": "node --experimental-strip-types lib/model.test.ts"
+  },
+  "dependencies": {
+    "@ai-sdk/anthropic": "^4.0.58",
+    "@ai-sdk/google": "^4.0.76",
+    "@ai-sdk/openai": "^4.0.71",
+    "@ai-sdk/react": "^4.0.110",
+    "ai": "^7.0.107",
+    "next": "^16.3.5",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "typescript": "^5.9.0"
+  },
+  "engines": {
+    "node": ">=22.6"
+  }
+}

@@ -1,0 +1,29 @@
+# --- Secrets. Nothing in here ever gets committed. ---
+.env
+.env.local
+.env.*.local
+ca-bundle.pem
+
+# --- Dependencies and build output ---
+node_modules/
+dist/
+.next/
+agent/.next/
+agent/next-env.d.ts
+*.tsbuildinfo
+.sanity/
+.vercel
+
+# --- Source PDFs ---
+# CIS distributes its benchmarks under its own terms. Everything derived from
+# them is in the repository, cited to the page; the 8 MB originals are not.
+# See sources/README.md.
+sources/*.pdf
+
+# --- Local planning artefact, not part of the deliverable ---
+detection-debt-sprint.html
+
+# --- Noise ---
+*.log
+.DS_Store
+Thumbs.db

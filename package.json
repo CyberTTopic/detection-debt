@@ -1,0 +1,35 @@
+{
+  "name": "detection-debt",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "seed:infra": "tsx scripts/seed-infrastructure.ts",
+    "seed:baselines": "tsx scripts/seed-baselines.ts",
+    "import:attack": "tsx scripts/import-attack.ts",
+    "import:rules": "tsx scripts/import-rules.ts",
+    "link:controls": "tsx scripts/link-controls.ts",
+    "test:groq": "node groq/verify.mjs",
+    "test:kql": "node --experimental-strip-types scripts/kql-features.test.ts",
+    "test": "npm run test:groq && npm run test:kql",
+    "demo": "tsx scripts/demo.ts",
+    "studio": "sanity dev",
+    "schema:deploy": "sanity schema deploy",
+    "studio:deploy": "sanity deploy"
+  },
+  "dependencies": {
+    "@sanity/client": "^7.0.0",
+    "yaml": "^2.5.0",
+    "sanity": "^6.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "styled-components": "^6.1.15"
+  },
+  "devDependencies": {
+    "groq-js": "^2.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  },
+  "engines": {
+    "node": ">=22.6"
+  }
+}

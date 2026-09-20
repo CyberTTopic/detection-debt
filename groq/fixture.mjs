@@ -1,0 +1,88 @@
+const ref = (id) => ({_type: 'reference', _ref: id})
+
+export const dataset = [
+  // ---- connectors ----
+  {_id:'conn.mdi', _type:'connector', name:'Microsoft Defender for Identity',
+   slug:{_type:'slug',current:'defender-for-identity'}, licenseRequired:'mdi',
+   licenseExpiresOn:'2026-12-31', enabled:true, estimatedGbPerDay:12},
+  {_id:'conn.entra', _type:'connector', name:'Microsoft Entra ID',
+   slug:{_type:'slug',current:'entra-id'}, licenseRequired:'entra-p2',
+   enabled:true, estimatedGbPerDay:40},
+
+  // ---- tables ----
+  {_id:'tbl.ile', _type:'logTable', tableName:'IdentityLogonEvents', connector:ref('conn.mdi'),
+   ingestionTier:'analytics', supportsBasicPlan:false, gbPerDay:12, retentionDays:90},
+  {_id:'tbl.signin', _type:'logTable', tableName:'SigninLogs', connector:ref('conn.entra'),
+   ingestionTier:'analytics', supportsBasicPlan:true, planLastChangedOn:'2025-01-10',
+   gbPerDay:28, retentionDays:180},
+  {_id:'tbl.nonint', _type:'logTable', tableName:'AADNonInteractiveUserSignInLogs',
+   connector:ref('conn.entra'), ingestionTier:'analytics', supportsBasicPlan:true,
+   planLastChangedOn:'2026-09-16', gbPerDay:12, retentionDays:90},
+
+  // ---- techniques ----
+  {_id:'tech.T1078', _type:'technique', attackId:'T1078', name:'Valid Accounts',
+   tactics:['TA0001','TA0005'], dataComponents:['User Account Authentication']},
+  {_id:'tech.T1078.004', _type:'technique', attackId:'T1078.004', name:'Valid Accounts: Cloud Accounts',
+   tactics:['TA0001','TA0005'], parentTechnique:ref('tech.T1078'),
+   dataComponents:['User Account Authentication']},
+  {_id:'tech.T1110', _type:'technique', attackId:'T1110', name:'Brute Force',
+   tactics:['TA0006'], dataComponents:['User Account Authentication']},
+  {_id:'tech.T1556', _type:'technique', attackId:'T1556', name:'Modify Authentication Process',
+   tactics:['TA0006'], dataComponents:['Active Directory Object Modification']},
+
+  // ---- rules ----
+  {_id:'det.1', _type:'detectionRule', ruleId:'DET-0001', title:'MDI: suspicious cloud account logon',
+   ruleType:'scheduled', status:'validated', dataSources:[ref('tbl.ile')],
+   techniques:[ref('tech.T1078.004')], kqlFeatures:['aggregationOnly'], lookbackDays:1,
+   fpRate:0.12, lastValidated:'2026-08-01', ownerTeam:'detection-eng'},
+  {_id:'det.2', _type:'detectionRule', ruleId:'DET-0002', title:'Entra: impossible travel cloud logon',
+   ruleType:'scheduled', status:'validated', dataSources:[ref('tbl.signin')],
+   techniques:[ref('tech.T1078.004')], kqlFeatures:['join'], lookbackDays:45,
+   fpRate:0.31, lastValidated:'2026-07-15', ownerTeam:'identity'},
+  {_id:'det.3', _type:'detectionRule', ruleId:'DET-0003', title:'Correlated password spray across identity planes',
+   ruleType:'scheduled', status:'validated', dataSources:[ref('tbl.ile'),ref('tbl.signin')],
+   techniques:[ref('tech.T1110')], kqlFeatures:['join','union'], lookbackDays:7,
+   fpRate:0.04, lastValidated:'2026-09-01', ownerTeam:'soc-t2'},
+  {_id:'det.4', _type:'detectionRule', ruleId:'DET-0004', title:'Auth method removed from privileged account',
+   ruleType:'nrt', status:'draft', dataSources:[ref('tbl.signin')],
+   techniques:[ref('tech.T1556')], kqlFeatures:['aggregationOnly'], lookbackDays:1,
+   ownerTeam:'unowned'},
+
+  {_id:'det.5', _type:'detectionRule', ruleId:'DET-0005', title:'Dormant account reactivated then used',
+   ruleType:'scheduled', status:'validated', dataSources:[ref('tbl.nonint')],
+   techniques:[ref('tech.T1078')], kqlFeatures:['aggregationOnly'], lookbackDays:14,
+   fpRate:0.09, lastValidated:'2026-09-10', ownerTeam:'identity'},
+
+  // ---- baseline controls: the verified real-world conflict ----
+  {_id:'ctl.cis.1.1.2', _type:'baselineControl', controlId:'1.1.2',
+   title:'Ensure two emergency access accounts have been defined',
+   sourceAuthority:'cis-m365-v7', sourceLocation:'CIS M365 v7.0.0, pp. 24-26',
+   setting:'breakglass-password-length', recommendedValue:'at least 16 characters',
+   enforced:true, conflictsWith:[ref('ctl.mcsb.pa5')],
+   mitigatesTechniques:[ref('tech.T1078.004')],
+   notes:'The same recommendation carries a Warning that MFA is required for all users including break-glass since 10/15/2024, which its own remediation steps do not reflect.'},
+  {_id:'ctl.mcsb.pa5', _type:'baselineControl', controlId:'PA-5',
+   title:'Set up emergency access', sourceAuthority:'mcsb',
+   sourceLocation:'MCSB v2, Privileged Access PA-5',
+   setting:'breakglass-password-length', recommendedValue:'at least 32 characters',
+   enforced:false, conflictsWith:[ref('ctl.cis.1.1.2')],
+   mitigatesTechniques:[ref('tech.T1078.004')]},
+  {_id:'ctl.cis.5.2.2.4', _type:'baselineControl', controlId:'5.2.2.4',
+   title:'Ensure Sign-in frequency is enabled and browser sessions are not persistent for Administrative users',
+   sourceAuthority:'cis-m365-v7', sourceLocation:'CIS M365 v7.0.0, pp. 294-297',
+   setting:'admin-signin-frequency', recommendedValue:'4 hours or less; Never persistent',
+   enforced:false, conflictsWith:[ref('ctl.ms.session')],
+   compensatingRules:[ref('det.2')]},
+  {_id:'ctl.ms.session', _type:'baselineControl', controlId:'session-lifetime-guidance',
+   title:'Reauthentication prompts and session lifetime', sourceAuthority:'microsoft-learn',
+   sourceLocation:'learn.microsoft.com/entra/identity/authentication/concepts-azure-multi-factor-authentication-prompts-session-lifetime',
+   setting:'admin-signin-frequency', recommendedValue:'rely on SSO and managed devices; default 90-day rolling window',
+   enforced:true, conflictsWith:[ref('ctl.cis.5.2.2.4')],
+   notes:'Warns that regular reauthentication prompts hurt productivity and can make users MORE vulnerable to attacks.'},
+
+  // ---- a decision that departs from guidance ----
+  {_id:'tun.1', _type:'tuningDecision', title:'Kept 8-hour admin sign-in frequency, not 4',
+   rule:ref('det.2'), decidedOn:'2026-06-02', decidedBy:'Detection engineering',
+   contradictsGuidance:true, relatedControls:[ref('ctl.cis.5.2.2.4')],
+   rationale:[{_type:'block',children:[{_type:'span',text:'Four hours produced 3x the MFA prompt volume and two reported phishing clicks during the pilot. We accepted CIS non-compliance on 5.2.2.4 and documented it.'}]}]},
+]
