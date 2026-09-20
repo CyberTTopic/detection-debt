@@ -1,0 +1,33 @@
+# Line endings.
+#
+# This project is edited on Windows and its scripts were written from a Linux
+# shell, so without this every file that crosses that boundary shows up as
+# "every line changed" in a diff. That noise hides real changes, which is the
+# actual cost.
+#
+# Normalise to LF in the repository, and check out what each platform expects.
+
+* text=auto eol=lf
+
+# PowerShell is happier with CRLF on disk, and Windows PowerShell 5.1 in
+# particular can misbehave on a script with mixed endings.
+*.ps1 text eol=crlf
+*.psm1 text eol=crlf
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+# Binary, never touched.
+*.png binary
+*.jpg binary
+*.pdf binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+
+# Generated. Collapse it in diffs and keep it out of language statistics, so
+# the repository is reported as TypeScript rather than as whatever npm wrote.
+package-lock.json linguist-generated=true -diff
+agent/package-lock.json linguist-generated=true -diff
+
+# Evidence captured from a running system, not authored here.
+evidence/** linguist-vendored=true
