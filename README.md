@@ -16,10 +16,15 @@ Submission for the [Sanity Challenge, Path One](https://dev.to/challenges/sanity
 
 | | |
 |---|---|
+| Live demo | https://detection-debt.vercel.app |
 | Project ID | `6qz0b6rp` |
 | Dataset | `production` |
 | Studio | https://detection-debt.sanity.studio |
 | Organization ID | `okh17tblt` |
+
+The demo runs on a free model quota and is throttled per caller — six questions
+a minute, forty an hour. A reader who wants more than that runs it locally with
+their own key, which takes one variable.
 
 The Studio is public and navigable: open a detection rule and its tables and
 techniques are links you can follow. That is the content model, and it is more
