@@ -11,9 +11,10 @@
     "test:delta": "node --experimental-strip-types lib/coverage-delta.test.ts",
     "test:mcp": "node --experimental-strip-types lib/mcp.test.ts",
     "test:normalize": "node --experimental-strip-types lib/normalize.test.ts",
-    "test": "npm run test:delta && npm run test:normalize && npm run test:model && npm run test:mcp",
+    "test": "npm run test:delta && npm run test:normalize && npm run test:model && npm run test:ratelimit && npm run test:mcp",
     "typecheck": "tsc --noEmit",
-    "test:model": "node --experimental-strip-types lib/model.test.ts"
+    "test:model": "node --experimental-strip-types lib/model.test.ts",
+    "test:ratelimit": "node --experimental-strip-types lib/rate-limit.test.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.58",

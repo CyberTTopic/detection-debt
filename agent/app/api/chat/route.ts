@@ -15,6 +15,7 @@ import {convertToModelMessages, stepCountIs, streamText, type UIMessage} from 'a
 import {config} from '@/lib/env.ts'
 import {ContextClient} from '@/lib/mcp.ts'
 import {resolveModel} from '@/lib/model.ts'
+import {callerKey, checkRateLimit} from '@/lib/rate-limit.ts'
 import {buildTools} from '@/lib/tools.ts'
 import {systemPrompt} from '@/lib/prompt.ts'
 
@@ -70,6 +71,16 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  // Before anything that costs money. The deployed URL is published, so this is
+  // the one thing standing between a script and the demo's quota.
+  const limit = checkRateLimit(callerKey(req))
+  if (!limit.ok) {
+    return Response.json(
+      {error: limit.message},
+      {status: 429, headers: {'retry-after': String(limit.retryAfter)}},
+    )
+  }
+
   let messages: UIMessage[]
   try {
     const body = (await req.json()) as {messages?: UIMessage[]}
