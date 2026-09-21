@@ -23,6 +23,30 @@ import {systemPrompt} from '@/lib/prompt.ts'
 export const maxDuration = 60
 
 /**
+ * Is this the provider saying "you have used your allowance"?
+ *
+ * Matched on the text because the three providers raise it as different error
+ * types with different shapes, and the only thing they reliably share is saying
+ * so in the message. Deliberately broad: a false positive shows a friendlier
+ * message than the truth, which is a much smaller cost than showing a reader
+ * `generate_content_free_tier_requests, limit: 20` and letting them conclude
+ * the application is broken.
+ */
+function isQuotaError(error: Error): boolean {
+  const text = `${error.name} ${error.message}`.toLowerCase()
+  return (
+    text.includes('quota') ||
+    text.includes('rate limit') ||
+    text.includes('rate_limit') ||
+    text.includes('429') ||
+    text.includes('resource_exhausted') ||
+    text.includes('resource has been exhausted') ||
+    text.includes('insufficient_quota') ||
+    text.includes('high demand')
+  )
+}
+
+/**
  * Clients live at module scope so the two caches survive between requests: the
  * tool list, and `initial_context`. The latter is the dataset's own instructions
  * plus its schema overview — static, several kilobytes, and needed on every
@@ -148,10 +172,16 @@ export async function POST(req: Request) {
     tools: buildTools(graph, docs),
 
     // Enough for: read the schema, query the graph, read two knowledge base
-    // entries, and answer. Capped because a loop that keeps querying is a loop
-    // that keeps spending, and a question needing more than this is a question
-    // the agent should be answering in words instead.
-    stopWhen: stepCountIs(12),
+    // entries, and answer. A loop that keeps querying is a loop that keeps
+    // spending, and a question needing more than this is one the agent should be
+    // answering in words instead.
+    //
+    // Lowered from twelve after the deployed demo exhausted its upstream quota.
+    // Each step is one model request, so this number and the per-caller limit in
+    // lib/rate-limit.ts multiply together against a budget of twenty requests a
+    // minute. Eight covers every question the demo is built around — the longest
+    // observed run used six — while keeping the worst case affordable.
+    stopWhen: stepCountIs(8),
 
     temperature: 0,
 
@@ -173,8 +203,25 @@ export async function POST(req: Request) {
 
     // Surfaced to the user in the UI. Same discipline: a sentence, not an object.
     onError(error) {
-      if (error instanceof Error) return error.message
-      return 'The turn failed. Check the server console.'
+      if (!(error instanceof Error)) return 'The turn failed. Check the server console.'
+
+      // The provider's own quota message is accurate and unreadable: it names a
+      // metric, a numeric limit and a retry delay to three decimal places. A
+      // reader seeing it concludes the demo is broken. It is not broken — it is
+      // a shared free quota and somebody got there first, which is worth saying
+      // in those words, along with the way out.
+      if (isQuotaError(error)) {
+        return (
+          'The shared free quota for this demo is exhausted for the moment — the model ' +
+          'provider allows twenty requests a minute across the whole project, and one ' +
+          'question costs several. This is a quota limit, not a failure: wait about a ' +
+          'minute and ask again. To skip the queue entirely, the repository runs locally ' +
+          'with your own API key from any of three providers, and needs one environment ' +
+          'variable to do it.'
+        )
+      }
+
+      return error.message
     },
   })
 }

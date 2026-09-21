@@ -9,17 +9,33 @@
  * drained. The failure it prevents is narrow and specific: a judge opening the
  * link and finding the demo out of quota because a script found it first.
  *
+ * THE NUMBERS COME FROM UPSTREAM, NOT FROM TASTE
+ * ----------------------------------------------
+ * The first version of this allowed six questions a minute per caller, on the
+ * reasoning that nobody reads faster than that. That reasoning was about the
+ * wrong unit. One *question* is not one request to the model: the agent runs a
+ * tool loop, so a question costs one model call per step — three for a simple
+ * coverage question, seven for one that reads the schema and then two knowledge
+ * base entries.
+ *
+ * The free tier allows twenty model requests a minute for the whole project. So
+ * the real ceiling is roughly three or four questions a minute across every
+ * visitor at once, and a per-caller limit of six was permission to exhaust the
+ * upstream quota single-handedly — which is exactly what happened the first time
+ * the deployed demo was tested.
+ *
+ * Two a minute per caller, with the step cap lowered alongside it, keeps one
+ * person comfortably inside the budget and leaves room for a second.
+ *
  * WHAT IT IS NOT
  * --------------
- * Not security. It is per-instance memory on a serverless platform, so the
- * effective limit is the configured one multiplied by however many instances
- * happen to be warm, and it resets whenever one is recycled. A determined
- * attacker rotates IPs and wins. Anyone who needs a real limit uses a shared
- * store; this is a speed bump sized to the actual risk.
- *
- * The numbers are chosen so a person using the demo never meets it. Six
- * questions a minute is faster than anyone reads an answer about ATT&CK
- * coverage, and forty an hour is a long session.
+ * Not security, and not a global limiter. It is per-instance memory on a
+ * serverless platform, so the effective limit is the configured one multiplied
+ * by however many instances happen to be warm, and it resets whenever one is
+ * recycled. A determined attacker rotates IPs and wins. It also cannot enforce
+ * a project-wide ceiling, because instances do not share state — when several
+ * people arrive together, upstream is what says no, and `agent/app/api/chat`
+ * turns that into a sentence rather than a stack trace.
  */
 
 interface Bucket {
@@ -33,8 +49,13 @@ const MINUTE = 60_000
 const HOUR = 60 * MINUTE
 
 export const LIMITS = {
-  perMinute: 6,
-  perHour: 40,
+  /**
+   * Two questions a minute. At up to eight model calls each that is sixteen of
+   * the free tier's twenty requests a minute — one caller can be served without
+   * locking everyone else out, which six could not.
+   */
+  perMinute: 2,
+  perHour: 30,
 } as const
 
 /**
@@ -96,9 +117,11 @@ export function checkRateLimit(key: string, now = Date.now()): RateLimitResult {
       ok: false,
       retryAfter,
       message:
-        `That is ${LIMITS.perMinute} questions in a minute, which is faster than anyone ` +
-        `reads the answers. This is a public demo on a free model quota, so it is ` +
-        `throttled. Try again in ${retryAfter} second${retryAfter === 1 ? '' : 's'}.`,
+        `Throttled: ${LIMITS.perMinute} questions a minute. Each question runs a tool ` +
+        `loop, so it costs several model calls, and this demo is on a free quota of ` +
+        `twenty a minute for the whole project. Try again in ${retryAfter} second` +
+        `${retryAfter === 1 ? '' : 's'} — or clone the repository and run it with your ` +
+        `own key, which takes one environment variable.`,
     }
   }
 

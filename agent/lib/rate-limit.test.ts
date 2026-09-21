@@ -41,9 +41,17 @@ const blocked = checkRateLimit('a', T0)
 check('one past the limit is refused', blocked.ok, false)
 check('and it says how long to wait', blocked.retryAfter > 0, true)
 check('with a message, not a status code', typeof blocked.message, 'string')
+// A refusal has to explain itself or it reads as a broken application. Two
+// things make the difference: why the limit exists, and what the reader can do
+// instead of waiting.
 check(
-  'that says why a public demo is throttled at all',
-  blocked.message?.includes('public demo'),
+  'the refusal explains that a question costs several model calls',
+  blocked.message?.includes('model calls'),
+  true,
+)
+check(
+  'and offers the way out, which is running it locally',
+  blocked.message?.includes('own key'),
   true,
 )
 
@@ -63,27 +71,26 @@ check('the first caller is now blocked', checkRateLimit('first', T0).ok, false)
 check('a different caller is unaffected', checkRateLimit('second', T0).ok, true)
 
 /* --- The hourly cap ----------------------------------------------- *
- * The rate has to sit in a specific band for this limit to be the one that
- * fires: fast enough to reach forty inside an hour, slow enough that the
- * per-minute limit never triggers first.
+ * The rate has to sit in a narrow band for this limit to be the one that fires:
+ * fast enough to accumulate the cap inside an hour, slow enough that the
+ * per-minute limit never triggers first. With two a minute and thirty an hour,
+ * that band is roughly one request every 32 to 60 seconds. Forty seconds sits
+ * inside it.
  *
- * One request every fifteen seconds is four a minute — under the six-a-minute
- * burst limit — and reaches forty in ten minutes.
- *
- * Worth stating because the first version of this test used one request every
- * two minutes, which is thirty an hour: the sliding window expires the oldest
- * entries as fast as new ones arrive and the cap is never reached at all. That
- * is correct behaviour, and it means the hourly limit only binds between
- * roughly 0.7 and 6 requests a minute. Below that band nothing stops a patient
- * caller, which is a deliberate choice rather than an oversight — a request
- * every two minutes, indefinitely, is not the abuse this is sized for.
+ * Worth stating because an earlier version of this test used one request every
+ * two minutes, which is thirty an hour on paper and never trips the cap in
+ * practice: the sliding window expires the oldest entries as fast as new ones
+ * arrive. That is correct behaviour, and it means nothing here stops a caller
+ * patient enough to stay under the rate — a deliberate choice rather than an
+ * oversight, since one question every two minutes indefinitely is not the abuse
+ * this is sized for.
  * ------------------------------------------------------------------ */
 
 resetRateLimits()
 let allowed = 0
 let firstRefusalAt = -1
 for (let i = 0; i < LIMITS.perHour + 5; i++) {
-  const at = T0 + i * 15 * SECOND
+  const at = T0 + i * 40 * SECOND
   if (checkRateLimit('steady', at).ok) allowed++
   else if (firstRefusalAt === -1) firstRefusalAt = i
 }
@@ -105,10 +112,10 @@ check('a request every two minutes is never refused, by design', refusedWhenSlow
 
 resetRateLimits()
 let refusals = 0
-for (let i = 0; i < 40; i++) {
-  if (!checkRateLimit('reader', T0 + i * 30 * SECOND).ok) refusals++
+for (let i = 0; i < 20; i++) {
+  if (!checkRateLimit('reader', T0 + i * 45 * SECOND).ok) refusals++
 }
-check('forty questions over twenty minutes: nobody is turned away', refusals, 0)
+check('twenty questions at one every 45 seconds: nobody is turned away', refusals, 0)
 
 /* --- Identifying the caller --------------------------------------- */
 

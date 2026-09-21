@@ -22,9 +22,12 @@ Submission for the [Sanity Challenge, Path One](https://dev.to/challenges/sanity
 | Studio | https://detection-debt.sanity.studio |
 | Organization ID | `okh17tblt` |
 
-The demo runs on a free model quota and is throttled per caller — six questions
-a minute, forty an hour. A reader who wants more than that runs it locally with
-their own key, which takes one variable.
+The demo runs on a free model quota of twenty requests a minute for the whole
+project, and one question costs a model call per agent step. So it is throttled
+to two questions a minute per caller, and when several people arrive at once the
+provider is what says no — the interface turns that into a sentence rather than a
+stack trace. A reader who wants more runs it locally with their own key from any
+of three providers, which takes one environment variable.
 
 The Studio is public and navigable: open a detection rule and its tables and
 techniques are links you can follow. That is the content model, and it is more
