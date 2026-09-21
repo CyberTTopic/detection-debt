@@ -112,6 +112,60 @@ function cap(value: unknown, maxChars = 20_000): unknown {
 
 let cachedKbId: string | null = null
 
+/* ------------------------------------------------------------------ *
+ * Contested settings, attached to every knowledge base read.
+ *
+ * WHY THIS IS NOT A PROMPT INSTRUCTION
+ * ------------------------------------
+ * The system prompt tells the agent that a question about a disputed hardening
+ * value needs both endpoints. A capable model follows that. A smaller one reads
+ * the knowledge base entry, finds a well-sourced number, and answers — and the
+ * answer is confident, cited, and missing the disagreement entirely. Observed:
+ * asked how long a break-glass password should be, a Flash-tier model called
+ * `docs_outline` and `docs_read` and returned "at least 16 characters", because
+ * the `emergency_access` entry says that and does not mention that the Microsoft
+ * Cloud Security Benchmark says 32.
+ *
+ * That is precisely the failure this whole project is about. The knowledge base
+ * cannot flag a conflict that spans two of its entries. Asking the model to
+ * remember to check elsewhere makes the correctness of the answer depend on how
+ * well it follows a paragraph it read a thousand tokens ago.
+ *
+ * So the fact is moved to where it cannot be missed: every docs response carries
+ * the list of contested settings. The model does not have to remember, it has to
+ * read what the tool just handed it. The same move as `conflictsWith` itself —
+ * make the disagreement structural rather than something to be recalled.
+ *
+ * One extra query, cached for the process lifetime, since the set of contested
+ * settings changes when someone edits the dataset and not per request.
+ * ------------------------------------------------------------------ */
+
+let cachedContested: string[] | null = null
+
+async function contestedSettingNames(graph: ContextClient): Promise<string[]> {
+  if (cachedContested) return cachedContested
+  const r = await query(graph, Q6_CONTESTED_SETTINGS, {})
+  if (!r.ok) return []
+  const list = (r.data as {contestedSettings?: unknown[]})?.contestedSettings ?? []
+  cachedContested = list.filter((s): s is string => typeof s === 'string')
+  return cachedContested
+}
+
+/** The warning appended to every knowledge base response. */
+async function contestedWarning(graph: ContextClient): Promise<string | null> {
+  const settings = await contestedSettingNames(graph)
+  if (settings.length === 0) return null
+  return (
+    `IMPORTANT — the graph records ${settings.length} setting(s) whose guidance is ` +
+    `CONTESTED between authorities: ${settings.join(', ')}. ` +
+    `A knowledge base entry states one claim and generally does not say that another ` +
+    `authority disagrees, because a conflict spanning two entries is invisible to ` +
+    `either of them. If your answer touches any of the settings above, call ` +
+    `claims_for_setting before answering and report every claim with its source. ` +
+    `Answering from this entry alone would be cited, confident, and incomplete.`
+  )
+}
+
 async function knowledgeBaseId(docs: ContextClient): Promise<string> {
   if (cachedKbId) return cachedKbId
   const ctx = await docs.initialContext()
@@ -516,7 +570,11 @@ export function buildTools(graph: ContextClient, docs: ContextClient) {
       inputSchema: z.object({}),
       execute: async () => {
         const outline = await docs.initialContext()
-        return {source: 'docs endpoint (Knowledge Base mode)', outline: cap(outline, 24_000)}
+        return {
+          source: 'docs endpoint (Knowledge Base mode)',
+          contested: await contestedWarning(graph),
+          outline: cap(outline, 24_000),
+        }
       },
     }),
 
@@ -526,7 +584,12 @@ export function buildTools(graph: ContextClient, docs: ContextClient) {
         'candidate paths in ONE call rather than reading them one at a time — a round trip ' +
         'costs more than a little extra text. Use for guidance, justification, and the ' +
         'reasoning behind a recommendation. If an entry and the graph disagree, say so ' +
-        'rather than reconciling them.',
+        'rather than reconciling them. ' +
+        'The result carries a `contested` field listing settings whose guidance is disputed. ' +
+        'An entry states one claim and will not tell you another authority disagrees, so if ' +
+        'your answer touches a listed setting you must call claims_for_setting before ' +
+        'answering. Reading this tool alone on a contested value produces an answer that is ' +
+        'cited, confident and wrong by omission.',
       inputSchema: z.object({
         paths: z
           .array(z.string())
@@ -547,6 +610,10 @@ export function buildTools(graph: ContextClient, docs: ContextClient) {
               citationNote:
                 'Cite the entry path for anything quoted from here, and name the underlying ' +
                 'authority (CIS section, Microsoft Learn page) when the entry gives one.',
+              // Attached to the content, not left to the system prompt. See the
+              // note above contestedSettingNames: an entry cannot tell you that
+              // another entry disagrees with it.
+              contested: await contestedWarning(graph),
               entries: cap(text, 30_000),
             }
       },
