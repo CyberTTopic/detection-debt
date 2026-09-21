@@ -642,6 +642,14 @@ button.stop:hover {
   font-size: var(--t-sm);
 }
 
+/*
+ * A quota limit is not a broken application, and red says it is. Amber says
+ * "come back in a minute", which is what actually happened.
+ */
+.notice.waiting {
+  border-left-color: var(--flag);
+}
+
 .notice h3 {
   margin: 0 0 0.3rem;
   font-size: var(--t-sm);

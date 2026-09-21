@@ -175,6 +175,19 @@ try {
   if ($message) { Write-Host "  $message" -ForegroundColor Red }
 
   Write-Host ""
+
+  # Checked before the error type, because a billing problem arrives typed as
+  # invalid_request_error and that branch's hint ("most often this is the model
+  # name") then contradicts the server's own message on the line above. A hint
+  # that disagrees with the evidence is worse than no hint.
+  if ($message -match 'credit balance|purchase credits|billing') {
+    Write-Host "  The key is VALID and authenticated. The account has no credit." -ForegroundColor Yellow
+    Write-Host "  Add credits under Plans and Billing. Nothing is wrong with the key," -ForegroundColor Yellow
+    Write-Host "  so do not create a new one." -ForegroundColor Yellow
+    Write-Host ""
+    exit 1
+  }
+
   switch ($type) {
     'authentication_error' {
       Write-Host "  The key itself is rejected. Either the paste is incomplete, or the key" -ForegroundColor Yellow

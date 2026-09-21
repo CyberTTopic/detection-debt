@@ -39,6 +39,32 @@ const OPENERS = [
   },
 ]
 
+/**
+ * A failed turn.
+ *
+ * The server sends one message that already explains what happened — a quota
+ * limit, a missing variable named individually, an endpoint that refused. So
+ * this shows that message and nothing else.
+ *
+ * It used to append a standing paragraph about Sanity tokens and stale provider
+ * keys, which was useful for exactly one kind of failure and actively misleading
+ * for the rest. Paired with "this is a quota limit, not a failure" it told a
+ * reader to go hunting for a configuration problem that did not exist. A hint
+ * that contradicts the evidence above it is worse than no hint.
+ *
+ * The heading is the only thing decided here, because "did not complete" reads
+ * as broken when the honest answer is "come back in a minute".
+ */
+function Failure({message}: {message: string}) {
+  const throttled = /quota|throttled|too many|rate limit/i.test(message)
+  return (
+    <div className={throttled ? 'notice waiting' : 'notice'} role="alert">
+      <h3>{throttled ? 'Waiting on the model quota' : 'The turn did not complete'}</h3>
+      <p>{message}</p>
+    </div>
+  )
+}
+
 function Answer({message}: {message: UIMessage}) {
   return (
     <div className="answer">
@@ -98,18 +124,7 @@ export function Chat() {
 
         {status === 'submitted' ? <p className="working">Reading the graph</p> : null}
 
-        {error ? (
-          <div className="notice" role="alert">
-            <h3>The turn did not complete</h3>
-            <p>{error.message}</p>
-            <p>
-              This needs an organization-level Sanity token with the Context Viewer role, both
-              Context endpoint URLs, and a key for one model provider. When more than one provider
-              key is set, the first configured one is used unless <code>AGENT_PROVIDER</code> names
-              another — so a stale key left in place will be preferred over the one you just added.
-            </p>
-          </div>
-        ) : null}
+        {error ? <Failure message={error.message} /> : null}
 
         <form
           className="composer"
